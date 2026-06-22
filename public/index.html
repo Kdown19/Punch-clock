@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#14171a" />
+  <title>Time Clock</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- PIN gate -->
+  <div id="lock" class="lock hidden">
+    <form class="lock-card" id="lock-form">
+      <div class="eyebrow">Locked</div>
+      <h1 class="lock-title">Enter PIN</h1>
+      <input id="pin-input" class="pin-input" inputmode="numeric" autocomplete="off" placeholder="••••" />
+      <button type="submit" class="btn-primary">Unlock</button>
+      <div id="lock-error" class="lock-error"></div>
+    </form>
+  </div>
+
+  <main id="app" class="app hidden">
+    <header class="masthead">
+      <div class="mast-row">
+        <div class="eyebrow">Time Clock</div>
+        <button id="settings-btn" class="icon-btn" aria-label="Settings">⚙</button>
+      </div>
+      <div class="rule"></div>
+    </header>
+
+    <!-- forgot-to-punch-out guard -->
+    <div id="open-warn" class="warn hidden">
+      <span id="open-warn-text">—</span>
+      <button id="open-warn-fix" class="warn-btn">Fix it</button>
+    </div>
+
+    <!-- live status panel -->
+    <section class="panel">
+      <div class="status-row">
+        <span id="status-dot" class="dot"></span>
+        <span id="status-label" class="status-label">—</span>
+      </div>
+
+      <div id="readout" class="readout">00:00:00</div>
+      <div id="readout-sub" class="readout-sub">&nbsp;</div>
+
+      <button id="punch" class="punch" disabled>
+        <span id="punch-label">···</span>
+      </button>
+    </section>
+
+    <!-- totals -->
+    <section class="stats">
+      <div class="stat">
+        <div class="stat-label">Today</div>
+        <div id="today-total" class="stat-value">0h 00m</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-label">This week</div>
+        <div id="week-total" class="stat-value">0h 00m</div>
+      </div>
+    </section>
+
+    <!-- timesheet / weekly targets -->
+    <section class="timesheet">
+      <div class="ts-head">
+        <span class="section-label">Week targets</span>
+        <span id="ot-flag" class="ot-flag hidden">OT</span>
+      </div>
+
+      <div class="ts-bar-wrap">
+        <div class="ts-bar">
+          <div id="ts-fill" class="ts-fill" style="width:0%"></div>
+          <div class="ts-mark ts-mark-40"><span>40</span></div>
+        </div>
+        <div class="ts-bar-ends">
+          <span>0h</span><span>50h</span>
+        </div>
+      </div>
+
+      <div class="ts-grid">
+        <div class="ts-cell">
+          <div class="ts-cell-label">Left to 40</div>
+          <div id="to-40" class="ts-cell-value">—</div>
+        </div>
+        <div class="ts-cell">
+          <div class="ts-cell-label">Left to 50</div>
+          <div id="to-50" class="ts-cell-value">—</div>
+        </div>
+        <div class="ts-cell">
+          <div class="ts-cell-label">/ day to 40</div>
+          <div id="per-40" class="ts-cell-value">—</div>
+        </div>
+        <div class="ts-cell">
+          <div class="ts-cell-label">/ day to 50</div>
+          <div id="per-50" class="ts-cell-value">—</div>
+        </div>
+      </div>
+
+      <div class="ts-days">
+        <span class="ts-days-label">Work days left this week</span>
+        <div class="stepper">
+          <button id="days-minus" class="step-btn" aria-label="One fewer day">−</button>
+          <span id="days-left" class="step-value">5</span>
+          <button id="days-plus" class="step-btn" aria-label="One more day">+</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- pay period -->
+    <section id="payperiod" class="payperiod">
+      <div class="ts-head">
+        <span class="section-label">Pay period</span>
+        <span id="pp-range" class="pp-range">—</span>
+      </div>
+      <div class="pp-total">
+        <div id="pp-hours" class="pp-hours">0h 00m</div>
+        <div id="pp-pay" class="pp-pay hidden">—</div>
+      </div>
+      <div class="pp-breakdown">
+        <div class="pp-bd-row"><span>Regular</span><span id="pp-reg" class="pp-mono">0h 00m</span></div>
+        <div class="pp-bd-row"><span>Overtime · 1.5×</span><span id="pp-ot" class="pp-mono">0h 00m</span></div>
+      </div>
+      <div class="pp-weeks">
+        <div class="pp-week"><span id="pp-w1-label" class="pp-week-label">Week 1</span><span id="pp-w1-val" class="pp-week-val">—</span></div>
+        <div class="pp-week"><span id="pp-w2-label" class="pp-week-label">Week 2</span><span id="pp-w2-val" class="pp-week-val">—</span></div>
+      </div>
+    </section>
+
+    <!-- hours by job -->
+    <section id="jobs-section" class="jobs hidden">
+      <div class="section-label" style="margin-bottom:10px;">Hours by job · this week</div>
+      <div id="jobs-list" class="jobs-list"></div>
+    </section>
+
+    <!-- history -->
+    <section class="history">
+      <div class="history-head">
+        <span class="section-label">Recent shifts</span>
+        <div class="head-actions">
+          <button id="export-btn" class="text-btn">Export</button>
+          <button id="add-btn" class="text-btn">+ Add</button>
+        </div>
+      </div>
+      <div id="entries" class="entries"></div>
+    </section>
+  </main>
+
+  <!-- clock-out sheet: capture job + notes on the way out -->
+  <div id="clockout-sheet" class="sheet hidden">
+    <div class="sheet-card">
+      <div class="sheet-head">
+        <span class="sheet-title">Punch out</span>
+        <button id="co-close" class="icon-btn" aria-label="Cancel">✕</button>
+      </div>
+      <div id="co-summary" class="co-summary">—</div>
+      <label class="field">
+        <span>Job worked on</span>
+        <input type="text" id="co-job" maxlength="80" autocomplete="off" list="job-options" placeholder="e.g. AFP head rebuild, line 7" />
+      </label>
+      <label class="field">
+        <span>Notes</span>
+        <input type="text" id="co-note" maxlength="120" autocomplete="off" placeholder="Anything worth recording" />
+      </label>
+      <div class="sheet-actions">
+        <button id="co-confirm" class="btn-primary">Punch out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- edit / add sheet -->
+  <div id="sheet" class="sheet hidden">
+    <div class="sheet-card">
+      <div class="sheet-head">
+        <span id="sheet-title" class="sheet-title">Edit shift</span>
+        <button id="sheet-close" class="icon-btn" aria-label="Close">✕</button>
+      </div>
+      <label class="field">
+        <span>Clock in</span>
+        <input type="datetime-local" id="edit-in" />
+      </label>
+      <label class="field">
+        <span>Clock out</span>
+        <input type="datetime-local" id="edit-out" />
+        <small class="hint">Leave blank if still on the clock</small>
+      </label>
+      <label class="field">
+        <span>Job</span>
+        <input type="text" id="edit-job" maxlength="80" list="job-options" placeholder="What you worked on" />
+      </label>
+      <label class="field">
+        <span>Note (optional)</span>
+        <input type="text" id="edit-note" maxlength="120" placeholder="e.g. half day, offsite" />
+      </label>
+      <div class="sheet-actions">
+        <button id="delete-btn" class="btn-danger hidden">Delete</button>
+        <button id="save-btn" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- settings -->
+  <div id="settings-sheet" class="sheet hidden">
+    <div class="sheet-card">
+      <div class="sheet-head">
+        <span class="sheet-title">Settings</span>
+        <button id="settings-close" class="icon-btn" aria-label="Close">✕</button>
+      </div>
+      <label class="field">
+        <span>Hourly rate</span>
+        <input type="number" id="set-rate" step="0.01" min="0" inputmode="decimal" placeholder="e.g. 32.50" />
+        <small class="hint">Used for pay estimates. Stored only on this device — never uploaded.</small>
+      </label>
+      <label class="field">
+        <span>Pay period start</span>
+        <input type="date" id="set-anchor" />
+        <small class="hint">A recent payday's first day. Periods run biweekly from here.</small>
+      </label>
+      <div class="sheet-actions">
+        <button id="set-save" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- shared job autocomplete -->
+  <datalist id="job-options"></datalist>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
